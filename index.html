@@ -32,51 +32,123 @@
     </style>
 </head>
 <body>
-    <input type="file" id="fileInput" accept=".html" required>
-    <button onclick="convertAndDownload()">Convert and Download JSON</button>
+    <form id="fileForm" class="custom-dropdown">
+        <h1 style="text-align: center;">HTML to JSON Convertor</h1>
+        <label for="fileOption" style="font-size: x-large;font-family:'Segoe UI', Tahoma, Geneva, Verdana, sans-serif">Choose HTML File:</label>
+        <select id="fileOption" onchange="toggleInput()">
+            <option value="userFile">Upload from PC</option>
+            <option value="sampleFile1" selected>Sample File 1</option>
+            <option value="sampleFile2">Sample File 2</option>
+        </select>
+        <input  type="file" id="htmlFile" class="custom-input" style="display: none;"  accept=".html">
+        <button type="button" style="padding: 10px;font-size: larger;" onclick="convertToJson()">Convert (JSON file Download)</button>
+    </form>
+    <!-- <input type="file" id="fileInput" accept=".html" required>
+    <button onclick="convertAndDownload()">Convert and Download JSON</button> -->
     <script>
-        function convertToJSON(htmlContent) {
-            const parser = new DOMParser();
-            const doc = parser.parseFromString(htmlContent, 'text/html');
-            const capitals = [];
-            const capitalElements = doc.querySelectorAll('.capital');
-            const stateElements = doc.querySelectorAll('.state');
-            capitalElements.forEach((capitalElement, index) => {
-                const state = stateElements[index].textContent.trim();
-                const capital = capitalElement.textContent.trim();
-                capitals.push({ "capital": capital, "state": state });
-            });
-            const summary = {
-                "numberOfCapitals": capitals.length
-            };
-            return {
-                "capitals": capitals,
-                "summary": summary
-            };
-        }
-        function convertAndDownload() {
-            const fileInput = document.getElementById('fileInput');
-            const file = fileInput.files[0];
-            if (file) {
-                const reader = new FileReader();
-                reader.onload = function(event) {
-                    const htmlContent = event.target.result;
-                    const outputJSON = convertToJSON(htmlContent);
-                    const blob = new Blob([JSON.stringify(outputJSON, null, 2)], { type: 'application/json' });
-                    const url = URL.createObjectURL(blob);
-                    const a = document.createElement('a');
-                    a.href = url;
-                    a.download = 'output.json';
-                    document.body.appendChild(a);
-                    a.click();
-                    document.body.removeChild(a);
-                    URL.revokeObjectURL(url);
-                };
-                reader.readAsText(file, 'UTF-8');
+        function toggleInput() {
+    var dropdown = document.getElementById('fileOption');
+    var fileInput = document.getElementById('htmlFile');
+
+    if (dropdown.value === 'userFile') {
+        fileInput.style.display = 'block';
+        fileInput.style.margin = '5px';
+    } else {
+        fileInput.style.display = 'none';
+    }
+}
+
+    function convertToJson() {
+        const fileOption = document.getElementById('fileOption');
+        const selectedOption = fileOption.value;
+
+        if (selectedOption === 'userFile') {
+            
+            const fileInput = document.getElementById('htmlFile');
+
+            
+            if (fileInput.files.length > 0) {
+               
+                handleFile(fileInput.files[0]);
             } else {
-                alert("Please select an HTML file.");
+                alert('Please select an HTML file.');
             }
+        } else {
+          
+            const sampleFileName = (selectedOption === 'sampleFile1') ? 'html1' : 'html2';
+
+            
+            fetch(`./${sampleFileName}.html`)
+                .then(response => response.text())
+                .then(htmlContent => {
+                    
+                    handleFileContent(htmlContent);
+                })
+                .catch(error => console.error('Error fetching sample file:', error));
         }
+    }
+
+    function handleFile(file) {
+        const reader = new FileReader();
+
+        reader.onload = function (e) {
+            const htmlContent = e.target.result;
+            
+            handleFileContent(htmlContent);
+        };
+
+        reader.readAsText(file);
+    }
+
+    function handleFileContent(htmlContent) {
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(htmlContent, 'text/html');
+
+        const capitals = [];
+
+        // Get elements with class "state" and "capital"
+        const stateElements = doc.getElementsByClassName('state');
+        const capitalElements = doc.getElementsByClassName('capital');
+
+        // Ensure equal number of "state" and "capital" elements
+        if (stateElements.length === capitalElements.length) {
+            for (let i = 0; i < stateElements.length; i++) {
+                const state = stateElements[i].textContent.trim();
+                const capital = capitalElements[i].textContent.trim();
+                capitals.push({ capital, state });
+            }
+
+            const numberOfCapitals = capitals.length;
+
+            // Create the JSON object
+            const jsonData = {
+                capitals,
+                summary: {
+                    numberOfCapitals
+                }
+            };
+
+            // Convert object to JSON
+            const jsonString = JSON.stringify(jsonData);
+
+            // Create a Blob containing the JSON data
+            const blob = new Blob([jsonString], { type: 'application/json' });
+
+            // Create a link to download the JSON file
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = 'output.json';
+
+            // Append the link to the document and trigger the click event
+            document.body.appendChild(link);
+            link.click();
+
+            // Remove the link from the document
+            document.body.removeChild(link);
+        } else {
+            alert('Number of "state" and "capital" elements should be the same.');
+        }
+    }
     </script>
 </body>
 </html>
